@@ -222,6 +222,23 @@ def validate_input(inp: dict) -> dict:
     if not isinstance(mute, bool):
         raise ValidationError("mute must be a boolean.")
 
+    # Extra LoRA strengths. The LoRA files themselves are deploy-time
+    # choices (config.EXTRA_LORA_KEY{,_2,_3}); per request only their
+    # strengths are tunable, with 0 disabling that slot for the job.
+    def _strength(field: str, default: float) -> float:
+        v = inp.get(field, default)
+        if not isinstance(v, (int, float)) or isinstance(v, bool) \
+                or v < 0 or v > 2:
+            raise ValidationError(
+                f"{field} must be a number between 0 and 2.",
+                hint=f"You sent {field}={v!r}.",
+            )
+        return float(v)
+
+    lora_strength = _strength("lora_strength", config.EXTRA_LORA_STRENGTH)
+    lora_strength_2 = _strength("lora_strength_2", config.EXTRA_LORA_STRENGTH_2)
+    lora_strength_3 = _strength("lora_strength_3", config.EXTRA_LORA_STRENGTH_3)
+
     video_vae = inp.get("video_vae", config.VIDEO_VAE_DEFAULT)
     if video_vae not in config.VIDEO_VAES:
         raise ValidationError(
@@ -266,6 +283,9 @@ def validate_input(inp: dict) -> dict:
         "width": width,
         "height": height,
         "mute": mute,
+        "lora_strength": float(lora_strength),
+        "lora_strength_2": float(lora_strength_2),
+        "lora_strength_3": float(lora_strength_3),
         "attention": attention,
         "video_vae": video_vae,
         "ignored_params": ignored,

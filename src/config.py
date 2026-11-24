@@ -188,3 +188,31 @@ POD_IDLE_TIMEOUT_S = int(os.getenv("POD_IDLE_TIMEOUT_S", "180"))
 POD_MAX_LIFETIME_S = int(os.getenv("POD_MAX_LIFETIME_S", "10800"))
 RUNPOD_POD_ID = os.getenv("RUNPOD_POD_ID", "")
 RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY", "")
+
+
+# -- Extra (user) LoRAs --------------------------------------------------------
+# Up to three additional LoRAs stacked after the Turbo LoRA (see
+# workflow._model_branch). The files are NOT part of the Model Cache
+# snapshot: at boot the worker fetches them itself
+# (storage.download_extra_loras), so swapping LoRAs is an env change +
+# worker restart, never a rebuild. EXTRA_LORA_KEY{,_2,_3} are object keys
+# inside S3_BUCKET_DEFAULT; empty disables that slot.
+# EXTRA_LORA_URL{,_2,_3} is the alternative source for a slot: the worker
+# downloads the file straight from that URL at boot. It exists for LoRAs
+# too large to push into the bucket through the storage web UI (B2's web
+# uploader refuses files over 500 MB). A set URL wins over the slot's key.
+EXTRA_LORA_KEY = os.getenv("EXTRA_LORA_KEY", "")
+EXTRA_LORA_STRENGTH = float(os.getenv("EXTRA_LORA_STRENGTH", "0.5"))
+EXTRA_LORA_KEY_2 = os.getenv("EXTRA_LORA_KEY_2", "")
+EXTRA_LORA_STRENGTH_2 = float(os.getenv("EXTRA_LORA_STRENGTH_2", "0.5"))
+EXTRA_LORA_KEY_3 = os.getenv("EXTRA_LORA_KEY_3", "")
+EXTRA_LORA_STRENGTH_3 = float(os.getenv("EXTRA_LORA_STRENGTH_3", "0.5"))
+EXTRA_LORAS = [
+    (EXTRA_LORA_KEY, EXTRA_LORA_STRENGTH),
+    (EXTRA_LORA_KEY_2, EXTRA_LORA_STRENGTH_2),
+    (EXTRA_LORA_KEY_3, EXTRA_LORA_STRENGTH_3),
+]
+EXTRA_LORA_URL = os.getenv("EXTRA_LORA_URL", "")
+EXTRA_LORA_URL_2 = os.getenv("EXTRA_LORA_URL_2", "")
+EXTRA_LORA_URL_3 = os.getenv("EXTRA_LORA_URL_3", "")
+EXTRA_LORA_URLS = [EXTRA_LORA_URL, EXTRA_LORA_URL_2, EXTRA_LORA_URL_3]

@@ -176,20 +176,40 @@ def _shared_loaders(unet_name: str, video_vae: str = "fp16") -> dict[str, dict]:
     }
 
 
-def _model_branch(nodes: dict, turbo: bool, lora_name: str) -> list:
-    """Adds the Turbo LoRA node when `turbo` and returns the MODEL ref the
-    scheduler and guider read from."""
-    if not turbo:
-        return ["unet_loader", 0]
-    nodes["lora"] = {
-        "class_type": "LoraLoaderModelOnly",
-        "inputs": {
-            "model": ["unet_loader", 0],
-            "lora_name": lora_name,
-            "strength_model": 1.0,
-        },
-    }
-    return ["lora", 0]
+def _model_branch(
+    nodes: dict,
+    turbo: bool,
+    lora_name: str,
+    extra_loras: list | None = None,
+) -> list:
+    """Adds the Turbo LoRA node when `turbo`, then the caller's extra LoRAs
+    (up to three, as (name, strength) pairs) on top of it, and returns the
+    MODEL ref the scheduler and guider read from."""
+    model_ref = ["unet_loader", 0]
+    if turbo:
+        nodes["lora"] = {
+            "class_type": "LoraLoaderModelOnly",
+            "inputs": {
+                "model": model_ref,
+                "lora_name": lora_name,
+                "strength_model": 1.0,
+            },
+        }
+        model_ref = ["lora", 0]
+    for i, (name, strength) in enumerate(extra_loras or []):
+        if not name:
+            continue
+        node_id = "lora_extra" if i == 0 else f"lora_extra_{i + 1}"
+        nodes[node_id] = {
+            "class_type": "LoraLoaderModelOnly",
+            "inputs": {
+                "model": model_ref,
+                "lora_name": name,
+                "strength_model": strength,
+            },
+        }
+        model_ref = [node_id, 0]
+    return model_ref
 
 
 def _sampling_and_output(
@@ -301,6 +321,7 @@ def build_workflow(
     filename_prefix: str = "minimax_h3/output",
     attention: str | None = None,
     video_vae: str = "fp16",
+    extra_loras: list | None = None,
 ) -> dict:
     """Build the ComfyUI API-format prompt dict for one T2V/I2V job.
 
@@ -318,7 +339,7 @@ def build_workflow(
     length = frame_length(seconds)
 
     nodes = _shared_loaders(UNET_NAME, video_vae)
-    model_ref = _model_branch(nodes, turbo_mode, LORA_NAME)
+    model_ref = _model_branch(nodes, turbo_mode, LORA_NAME, extra_loras)
     if steps is None:
         steps = TURBO_STEPS if turbo_mode else BASE_STEPS
 
